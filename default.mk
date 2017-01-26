@@ -23,20 +23,24 @@ default/default: default/all
 	date
 
 config_pkgconfig?=1
+PKG_CONFIG?=pkg-config
 
 ifeq (${config_pkgconfig},1)
 iotivity_dir?=$(PKG_CONFIG_SYSROOT_DIR)/usr/include/iotivity
 iotivity_out?=$(PKG_CONFIG_SYSROOT_DIR)/usr/lib
-iotivity_cppflags+=$(shell pkg-config iotivity --cflags)
-iotivity_cppflags+=-I${iotivity_dir}/..
+iotivity_cflags+=$(shell ${PKG_CONFIG} --cflags iotivity)
+iotivity_libs+=$(shell ${PKG_CONFIG} --libs iotivity)
+# TODO: workaround for 1.2.0
+iotivity_cflags+=-I${iotivity_dir}/resource/stack
 else
 include iotivity.mk
 LDFLAGS+=-L${iotivity_out}
-endif
-CPPFLAGS+=${iotivity_cppflags}
 LIBS+=-loc_logger
 LIBS+=-loctbstack
 LIBS+=-lconnectivity_abstraction
+endif
+CPPFLAGS+=${iotivity_cflags}
+LIBS+=${iotivity_libs}
 
 CFLAGS+=-fPIC
 CPPFLAGS+=-Isrc
