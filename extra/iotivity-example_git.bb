@@ -6,14 +6,16 @@ SECTION = "apps"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 
-SRCREV = "master"
+SRCREV = "sandbox/pcoval/number"
 SRC_URI = "git://github.com/TizenTeam/iotivity-example.git/;protocol=http;nobranch=1"
 
 S = "${WORKDIR}/git"
 
+inherit systemd
 inherit systemd pkgconfig
 
 LOCAL_OPT_DIR = "/opt"
+LOCAL_OPT_DIR_D = "${D}${LOCAL_OPT_DIR}"
 
 DEPENDS += " iotivity "
 BDEPENDS += " iotivity-dev "
@@ -31,6 +33,8 @@ EXTRA_OEMAKE += " config_pkgconfig=1 "
 EXTRA_OEMAKE += " iotivity_dir=${PKG_CONFIG_SYSROOT_DIR}/usr/include/iotivity "
 EXTRA_OEMAKE += " iotivity_out=${PKG_CONFIG_SYSROOT_DIR}/usr/include/iotivity "
 EXTRA_OEMAKE += " iotivity_cppflags=-I${PKG_CONFIG_SYSROOT_DIR}/usr/include/iotivity/resource/stack "
+# TODO: remove this workaround for iotivity-1.2.0
+EXTRA_OEMAKE += " iotivity_cppflags=-I${PKG_CONFIG_SYSROOT_DIR}/usr/include/iotivity/resource/ "
 
 do_configure() {
 }
