@@ -75,6 +75,11 @@ unsigned int sleep(unsigned int secs)
     delay(secs*1000);
 }
 
+int platform_getValue()
+{
+    static double value=0;
+    return (int) value++;
+}
 
 void platform_setValue(bool value)
 {
@@ -174,6 +179,7 @@ void platform_setup()
 
     delay(4*gDelay);
 }
+
 
 void setup()
 {
