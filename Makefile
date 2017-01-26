@@ -123,10 +123,10 @@ check: ${all}
 rebuild: cleanall all
 	@echo "# $@: $^"
 
-local.mk:
-	touch $@
+#local.mk:
+#	touch $@
 
-todo/local.mk:
+local.mk:
 	ls $(PKG_CONFIG_SYSROOT_DIR)/usr/lib*/pkgconfig/iotivity.pc && \
  echo "export config_pkgconfig=1" \
  || echo "export config_pkgconfig=0" > $@
