@@ -45,6 +45,8 @@ LOCAL_CPP_SRCS += src/server.c.tmp.cpp
 LOCAL_CPP_SRCS += src/server/platform/${platform}/platform.c.tmp.cpp
 CPPFLAGS+=-Isrc
 
+# sensor
+
 #{ configuration
 eth_enabled?=1
 CPPFLAGS += -DARDUINOSERIAL=1
@@ -118,11 +120,15 @@ scons_flags+=SHIELD=ETH
 arduino/all: ${TARGET_ELF}
 	@echo "# $@: $^"
 
-arduino/demo: upload arduino/run
+arduino/prepare:
+	-killall xterm server client
+
+arduino/demo: arduino/prepare upload arduino/run
 	@echo "# $@: $^"
 
 arduino/run:
-	sleep 10
+	@echo "# TODO: waiting registration ($@)"
+	sleep 30
 	${MAKE} run platform=default
 	@echo "# $@: $^"
 
@@ -160,3 +166,7 @@ ${TARGET_ELF}: ${LOCAL_OBJS} ${LIBS}
 
 /dev/ttyACM0: /dev/ttyUSB0
 	echo sudo ln -fs ${<F} $@
+
+SFE_BMP180:
+	git clone --depth 1 \
+https://github.com/LowPowerLab/SFE_BMP180
