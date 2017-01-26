@@ -42,13 +42,16 @@ arch?=$(shell arch || echo ${ARCH})
 
 rule/default: ${platform}/default
 
-all: local.mk
+all: help local.mk
 	${MAKE} ${platform}/$@
 
 help: README.md
 	@cat $<
 	@echo "# Type make demo , client/server usage"
 	@echo "# iotivity_version=${iotivity_version}"
+	@echo "# config_pkgconfig=${config_pkgconfig}"
+	@echo "# iotivity_cflags=${iotivity_cflags}"
+	@echo "# CPPFLAGS=${CPPFLAGS}"
 
 demo: demo/linux demo/arduino
 	@echo "# $@: $^"
@@ -108,7 +111,6 @@ xterm/% : bin/%
 	xterm -e ${MAKE} run/${@F}  &
 	sleep 5
 
-
 run: run/client
 	@echo "# $@: $^"
 
@@ -122,7 +124,10 @@ rebuild: cleanall all
 	@echo "# $@: $^"
 
 local.mk:
-	ls /usr/lib*/pkgconfig/iotivity.pc && \
+	touch $@
+
+todo/local.mk:
+	ls $(PKG_CONFIG_SYSROOT_DIR)/usr/lib*/pkgconfig/iotivity.pc && \
  echo "export config_pkgconfig=1" \
  || echo "export config_pkgconfig=0" > $@
 	@echo "# type make help for usage"
