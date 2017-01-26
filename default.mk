@@ -35,15 +35,20 @@ iotivity_cflags+=-I${iotivity_dir}/resource/stack
 else
 include iotivity.mk
 LDFLAGS+=-L${iotivity_out}
-LIBS+=-loc_logger
-LIBS+=-loctbstack
-LIBS+=-lconnectivity_abstraction
+iotivity_libs+=-loctbstack
+iotivity_libs+=-lconnectivity_abstraction
+iotivity_libs+=-loc_logger
+iotivity_libs+=-luuid
+iotivity_libs+=-lpthread
+iotivity_libs+=-lm
+iotivity_cflags+=-pthread 
 endif
 CPPFLAGS+=${iotivity_cflags}
 LIBS+=${iotivity_libs}
 
-CFLAGS+=-fPIC
+CPPFLAGS+=-fPIC -pthread
 CPPFLAGS+=-Isrc
+LDFLAGS+=-fPIC
 
 client?=${local_bindir}/client
 server_objs?=src/server/platform/default/platform.o
