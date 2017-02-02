@@ -77,7 +77,6 @@ void Resource::onGet(const HeaderOptions &headerOptions,
     {
         cerr << "errror:: in GET response:" << eCode << endl;
     }
-
 }
 
 
@@ -132,7 +131,6 @@ void IoTClient::start()
 {
     LOG();
     string coap_multicast_discovery = string(OC_RSRVD_WELL_KNOWN_URI);
-
     OCConnectivityType connectivityType(CT_ADAPTER_IP);
     OCPlatform::findResource("", //
                              coap_multicast_discovery.c_str(),
@@ -188,7 +186,6 @@ void IoTClient::print(shared_ptr<OCResource> resource)
         cerr << "log: Resource: interface: " << interface << endl;
     }
 }
-
 
 
 int IoTClient::main(int argc, char *argv[])
