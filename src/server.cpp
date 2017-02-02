@@ -147,7 +147,6 @@ OCEntityHandlerResult IoTServer::handleEntity(shared_ptr<OCResourceRequest> requ
             auto response = std::make_shared<OC::OCResourceResponse>();
             response->setRequestHandle(request->getRequestHandle());
             response->setResourceHandle(request->getResourceHandle());
-
             if (requestType == "GET")
             {
                 cerr << "GET request for platform Resource" << endl;
