@@ -194,6 +194,7 @@ void IoTServer::update()
 
         cerr << "location: " << std::fixed << m_lat << "," << std::fixed << m_lon << endl;
     }
+    OCStackResult result = OCPlatform::notifyAllObservers(m_ResourceHandle);
 }
 
 
