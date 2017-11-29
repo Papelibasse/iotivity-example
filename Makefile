@@ -23,7 +23,7 @@
 
 default: all
 
-name?=iotivity-example
+name?=iotivity-example-clock
 
 config_pkgconfig?=1
 export config_pkgconfig
@@ -48,8 +48,8 @@ iotivity_dir=${include_dir}/iotivity
 else
 override LDLIBS+=-loc -loc_logger -loctbstack
 #TODO: Enable security here
-#override LDLIBS+=-locpmapi
-#override CPPFLAGS+=-D__WITH_DTLS__=1
+override LDLIBS+=-locpmapi
+override CPPFLAGS+=-D__WITH_DTLS__=1
 override CPPFLAGS+=-I${iotivity_dir}
 override CPPFLAGS+=-I${iotivity_dir}/resource
 override CPPFLAGS+=-I${iotivity_dir}/resource/c_common
@@ -96,8 +96,22 @@ exes?=${client} ${observer}
 exes+=${server}
 all+=${exes}
 
+#TODO: Add Security related files if SECURED
+json_files?=$(wildcard *.json)
+dat_files?=${json_files:.json=.dat}
+all+=${json_files}
+all+=${dat_files}
+json2cbor?=$(shell ls /usr/lib*/iotivity/resource/csdk/security/tool/json2cbor | head -n1 || echo "json2cbor")
 
 all: ${all}
+
+
+dat: ${json_files} ${dat_files}
+	ls -l $<
+
+%.dat: %.json
+	${json2cbor} $< $@
+	ls -l $@
 
 ${local_bindir}/server: src/server.o ${server_objs} ${objs}
 	@-mkdir -p ${@D}
@@ -135,10 +149,6 @@ ${tarball}: ${CURDIR} distclean
  ./
 	ls -l $@
 
-#TODO: Add Security related files if SECURED
-json_files?=
-dat_files?=${json_files:.json=.dat}
-
 install: ${exes} ${dat_files}
 	install -d ${install_dir}/bin
 	install -m755 $^ ${install_dir}/bin
@@ -163,7 +173,7 @@ exe_args?=\
  stdbuf -oL -eL \
  ${exe} 
 
-run/%: ${local_bindir}/%
+run/%: ${local_bindir}/% ${dat_files}
 	@mkdir -p ${log_dir}
 	${exe_args} ${<D}/${<F} ${run_args} \
  | tee ${log_dir}/${@F}
@@ -174,11 +184,17 @@ xterm/% : ${local_bindir}/%
 
 run: run/server
 
-auto: all xterm/server  run/client-auto
-	killall client server
+stop:
+	-killall client server observer
+	-killall -9 client server observer
 
-demo:all xterm/server  run/client
-	killall client server
+force/%:
+	make ${@F}
+
+auto: all xterm/server run/client-auto
+
+demo: stop all xterm/server run/observer force/stop
+	@echo "$@: $^"
 
 help: README.md
 	cat $<

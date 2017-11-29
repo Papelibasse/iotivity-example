@@ -25,7 +25,6 @@
 #include <unistd.h>
 #include <ctime>
 #include "client.h"
-#include "platform.h"
 
 using namespace std;
 using namespace OC;
@@ -35,11 +34,41 @@ Resource::Resource(shared_ptr<OCResource> resource)
 {
     LOG();
     m_OCResource = resource;
+    m_GETCallback = bind(&Resource::onGet, this,
+                         placeholders::_1, placeholders::_2, placeholders::_3);
 }
+
 
 Resource::~Resource()
 {
 }
+
+
+void Resource::onGet(const HeaderOptions &headerOptions,
+                     const OCRepresentation &representation, int eCode)
+{
+    LOG();
+    if (eCode < OC_STACK_INVALID_URI)
+    {
+        IoTClient::getInstance()->handle(headerOptions, representation, eCode, 0);
+    }
+    else
+    {
+        cerr << "errror:: in GET response:" << eCode << endl;
+    }
+    IoTClient::getInstance()->input();
+}
+
+
+void Resource::get()
+{
+    LOG();
+    QueryParamsMap params;
+    m_OCResource->get(params, m_GETCallback);
+}
+
+
+IoTClient *IoTClient::mInstance = nullptr;
 
 
 IoTClient::IoTClient()
@@ -48,13 +77,12 @@ IoTClient::IoTClient()
     init();
 }
 
+
 IoTClient::~IoTClient()
 {
     LOG();
 }
 
-
-IoTClient *IoTClient::mInstance = nullptr;
 
 IoTClient *IoTClient::getInstance()
 {
@@ -65,18 +93,31 @@ IoTClient *IoTClient::getInstance()
     return mInstance;
 }
 
+
+static FILE *override_fopen(const char *path, const char *mode)
+{
+    LOG();
+    static char const *const CRED_FILE_NAME = "oic_svr_db_client.dat";
+    char const *const filename
+        = (0 == strcmp(path, OC_SECURITY_DB_DAT_FILE_NAME))
+          ? CRED_FILE_NAME : path;
+    return fopen(filename, mode);
+}
+
+
 void IoTClient::init()
 {
     LOG();
-
-    m_platformConfig = make_shared<PlatformConfig>
+    static OCPersistentStorage ps {override_fopen, fread, fwrite, fclose, unlink };
+    m_PlatformConfig = make_shared<PlatformConfig>
                        (ServiceType::InProc, //
-                        ModeType::Client, //
+                        ModeType::Both, //
                         "0.0.0.0", //
                         0, //
-                        OC::QualityOfService::LowQos //
+                        OC::QualityOfService::LowQos, //
+                        &ps
                        );
-    OCPlatform::Configure(*m_platformConfig);
+    OCPlatform::Configure(*m_PlatformConfig);
     m_FindCallback = bind(&IoTClient::onFind, this, placeholders::_1);
 }
 
@@ -121,10 +162,24 @@ void IoTClient::onFind(shared_ptr<OCResource> resource)
             if (Common::m_endpoint == resourceUri)
             {
                 cerr << "resourceUri=" << resourceUri << endl;
-                m_Resource = make_shared<Resource>(resource);
-                input();
-            }
+                for (auto &resourceEndpoint : resource->getAllHosts())
+                {
+                    if (std::string::npos != resourceEndpoint.find("coaps"))
+                    {
+                        // Change Resource host if another host exists
+                        std::cout << "\tChange host of resource endpoints" << std::endl;
+                        std::cout << "\t\t" << "Current host is "
+                                  << resource->setHost(resourceEndpoint) << std::endl;
+                        m_Resource = make_shared<Resource>(resource);
+                        if (true)   // simple client can only use get once
+                        {
+                            m_Resource->get();
+                        }
+                        break;
+                    }
 
+                }
+            }
         }
     }
     catch (OCException &ex)
@@ -156,6 +211,18 @@ void IoTClient::print(shared_ptr<OCResource> resource)
 }
 
 
+// TODO: override with your business logic
+void IoTClient::handle(const HeaderOptions headerOptions, const OCRepresentation &rep,
+                       const int &eCode, const int &sequenceNumber)
+{
+    rep.getValue("datetime", m_DateTime);
+    cerr << "log: " << "datetime" << "=" << m_DateTime << endl;
+    rep.getValue("countdown", m_CountDown);
+    cerr << "log: " << "countdown" << "=" << m_CountDown << endl;
+    cout << "clock: " << m_DateTime << ", " << m_CountDown << endl;
+}
+
+
 void IoTClient::input()
 {
     cerr << endl << "menu: "
@@ -167,8 +234,6 @@ void IoTClient::input()
 
 int IoTClient::main(int argc, char *argv[])
 {
-    IoTClient::getInstance()->start();
-
     for (int i = 1; i < argc; i++)
     {
         if (0 == strcmp("-v", argv[i]))
@@ -177,7 +242,9 @@ int IoTClient::main(int argc, char *argv[])
         }
     }
 
-    int choice;
+    IoTClient::getInstance()->start();
+
+    int choice = 0;
     do
     {
         cin >> choice;
@@ -186,7 +253,7 @@ int IoTClient::main(int argc, char *argv[])
             case 9:
                 return 0;
             default:
-                IoTClient::input();
+                IoTClient::getInstance()->input();
                 break;
         }
     }

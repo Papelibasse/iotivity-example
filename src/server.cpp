@@ -23,6 +23,7 @@
 #include "common.h"
 
 #include <csignal>
+#include <ctime>
 #include <functional>
 
 #include "server.h"
@@ -31,8 +32,8 @@
 using namespace std;
 using namespace OC;
 
-
 bool IoTServer::m_over = false;
+
 
 IoTServer::IoTServer(string endpoint)
 {
@@ -49,19 +50,31 @@ IoTServer::~IoTServer()
 }
 
 
+static FILE *override_fopen(const char *path, const char *mode)
+{
+    LOG();
+    static const char *CRED_FILE_NAME = "oic_svr_db_server.dat";
+    char const *const filename
+        = (0 == strcmp(path, OC_SECURITY_DB_DAT_FILE_NAME)) ? CRED_FILE_NAME : path;
+    return fopen(filename, mode);
+}
+
+
 void IoTServer::init()
 {
     LOG();
-
-    m_platformConfig = make_shared<PlatformConfig>
+    static OCPersistentStorage ps {override_fopen, fread, fwrite, fclose, unlink };
+    m_PlatformConfig = make_shared<PlatformConfig>
                        (ServiceType::InProc, // different service ?
                         ModeType::Server, // other is Client or Both
                         "0.0.0.0", // default ip
                         0, // default random port
-                        OC::QualityOfService::LowQos// qos
+                            OC::QualityOfService::LowQos, // qos
+                            &ps
                        );
-    OCPlatform::Configure(*m_platformConfig);
+    OCPlatform::Configure(*m_PlatformConfig);
 }
+
 
 void IoTServer::setup()
 {
@@ -77,22 +90,22 @@ void IoTServer::setup()
     }
 }
 
+
 OCStackResult IoTServer::createResource(string uri, string type, EntityHandler handler,
                                         OCResourceHandle &handle)
 {
     LOG();
     OCStackResult result;
-    string resourceUri = uri;
-    string resourceType = type;
-    string resourceInterface = Common::m_interface;
-    uint8_t resourceFlag = OC_DISCOVERABLE | OC_OBSERVABLE;
     try
     {
         result = OCPlatform::registerResource // resource to be discovered
                  (handle,
-                  resourceUri, resourceType,
-                  resourceInterface, //
-                  handler, resourceFlag);
+                  uri, // Resource URI, CoAP endpoint
+                  type, // Resource type (can use oneiota or not)
+                  Common::m_interface, //resourceInterface grant CRUD opts
+                  handler, // for responding to client requests
+                  Common::m_ResourceFlags // tell if observable or secured
+                 );
 
         if (result != OC_STACK_OK)
             cerr << "error: Could not create " << type << " resource" << endl;
@@ -125,6 +138,15 @@ OCStackResult IoTServer::respond(std::shared_ptr<OC::OCResourceResponse> respons
 }
 
 
+OCStackResult IoTServer::handleGet(shared_ptr<OCResourceRequest> request)
+{
+    LOG();
+    OCStackResult result = OC_STACK_OK;
+
+    return result;
+}
+
+
 OCEntityHandlerResult IoTServer::handleEntity(shared_ptr<OCResourceRequest> request)
 {
     LOG();
@@ -139,6 +161,23 @@ OCEntityHandlerResult IoTServer::handleEntity(shared_ptr<OCResourceRequest> requ
             auto response = std::make_shared<OC::OCResourceResponse>();
             response->setRequestHandle(request->getRequestHandle());
             response->setResourceHandle(request->getResourceHandle());
+
+            if (requestType == "GET")
+            {
+                if (handleGet(request) == OC_STACK_OK)
+                {
+                    if (respond(response) == OC_STACK_OK)
+                    {
+                        result = OC_EH_OK;
+                    }
+                }
+                else
+                {
+                    response->setResponseResult(OC_EH_ERROR);
+                    OCPlatform::sendResponse(response);
+                }
+            }
+            else
             {
                 cerr << "error: unsupported " << requestType << endl;
                 response->setResponseResult(OC_EH_ERROR);
@@ -147,6 +186,24 @@ OCEntityHandlerResult IoTServer::handleEntity(shared_ptr<OCResourceRequest> requ
         }
     }
     return result;
+}
+
+
+void IoTServer::update()
+{
+    LOG();
+    time_t now;
+    time(&now);
+    static char datetime[sizeof "2037-12-31T23:59:59Z"];
+    strftime(datetime, sizeof datetime, "%FT%TZ", gmtime(&now));
+    m_Representation.setValue("datetime", string(datetime));
+
+    static double m_countdown = 0;
+    m_countdown ++;
+    m_Representation.setValue("countdown", m_countdown);
+    cerr << "clock: " << datetime << ", " << m_countdown << endl;
+
+    OCStackResult result = OCPlatform::notifyAllObservers(m_ResourceHandle);
 }
 
 
@@ -171,6 +228,7 @@ int IoTServer::main(int argc, char *argv[])
          << "Usage: server -v" << endl
          ;
 
+    int delay = Common::m_period;
     int subargc = argc;
     char **subargv = argv;
     for (int i = 1; i < argc; i++)
@@ -181,6 +239,10 @@ int IoTServer::main(int argc, char *argv[])
             argc--;
             subargv++;
         }
+        else
+        {
+            delay = atoi(argv[i]);
+        }
     }
 
     Platform::getInstance().setup(subargc, subargv);
@@ -188,9 +250,9 @@ int IoTServer::main(int argc, char *argv[])
     IoTServer server;
     try
     {
-        int delay = Common::m_period;
         do
         {
+            server.update();
             sleep(delay);
         }
         while (!IoTServer::m_over );

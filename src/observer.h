@@ -30,45 +30,54 @@
 #include <iotivity/resource/OCPlatform.h>
 #include <iotivity/resource/OCResource.h>
 
-int observer_main(int argc, char *argv[]);
 
+class Resource
+{
+    public:
+        Resource(std::shared_ptr<OC::OCResource> resource);
+        virtual ~Resource();
+        void get();
+    protected:
+        void onGet(const OC::HeaderOptions &, const OC::OCRepresentation &, int);
+    protected:
+        std::shared_ptr<OC::OCResource> m_OCResource;
+        OC::OCRepresentation m_Representation;
+        OC::GetCallback m_GETCallback;
+};
 
 class IoTObserver
 {
     public:
-        IoTObserver();
-        virtual ~IoTObserver();
-        static IoTObserver *getInstance();
-
-        void init();
-        void start();
-    public:
         static int main(int argc, char *argv[]);
 
-
-    protected:
-        std::shared_ptr<OC::PlatformConfig> m_PlatformConfig;
-
-        OC::FindCallback m_FindCallback;
-
-        static const OC::ObserveType OBSERVE_TYPE_TO_USE;
-
-        void onFind(std::shared_ptr<OC::OCResource>);
+        static IoTObserver *getInstance();
 
         static void onObserve(const OC::HeaderOptions /*headerOptions*/,
                               const OC::OCRepresentation &rep,
                               const int &eCode, const int &sequenceNumber);
 
     public:
+        std::shared_ptr<Resource> getResource();
+        void start();
+        /// Override with your business logic related to resource type
+        void handle(const OC::HeaderOptions /*headerOptions*/,
+                    const OC::OCRepresentation &rep,
+                    const int &eCode, const int &sequenceNumber);
 
-        static void handle(const OC::HeaderOptions /*headerOptions*/,
-                           const OC::OCRepresentation &rep,
-                           const int &eCode, const int &sequenceNumber);
-
-        void print(std::shared_ptr<OC::OCResource> resource);
+    private:
+        IoTObserver();
+        virtual ~IoTObserver();
+        void init();
+        void onFind(std::shared_ptr<OC::OCResource>);
 
     private:
         static IoTObserver *mInstance;
+        std::shared_ptr<Resource> m_Resource;
+        std::shared_ptr<OC::PlatformConfig> m_PlatformConfig;
+        OC::FindCallback m_FindCallback;
+        std::string m_DateTime;
+        double m_CountDown;
+
 };
 
 #endif /* OBSERVER_H_ */

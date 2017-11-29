@@ -25,6 +25,7 @@
 #define COMMON_H_
 
 #include <string>
+#include <iotivity/resource/OCApi.h>
 
 #if !defined(PACKAGE)
 #define PACKAGE "Example"
@@ -40,12 +41,22 @@ class Common
         static std::string  m_type;
         /** url's path (used both sides) **/
         static std::string  m_endpoint;
+        /** secured **/
+    static const uint8_t m_ResourceFlags = OC_DISCOVERABLE | OC_OBSERVABLE
+        | OC_NONSECURE
+        //| OC_SECURE //TODO: support unsecure resource in secure build
+        ;
         /** polling period**/
         static int m_period;
         /** log enabled if positive **/
         static int m_logLevel;
     public:
         static void log(char const *const message);
+        static bool isSecure()
+        {
+            return (OC_SECURE & m_ResourceFlags);
+        }
+
 };
 
 #include <iostream>
