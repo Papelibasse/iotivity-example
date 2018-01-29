@@ -22,3 +22,6 @@ https://wiki.tizen.org/wiki/User:Pcoval
 
 https://wiki.iotivity.org/community
 
+
+## Notes ##
+
