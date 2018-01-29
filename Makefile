@@ -57,8 +57,6 @@ local_optdir?=opt
 install_dir?=${DESTDIR}/${local_optdir}/${package}/
 _unitdir?=/lib/systemd/
 
-vpath+=src
-VPATH+=src
 
 CPPFLAGS+=-DCONFIG_SERVER_MAIN=1
 CPPFLAGS+=-DCONFIG_CLIENT_MAIN=1
@@ -68,7 +66,7 @@ V=1
 
 CXXFLAGS+=-std=c++0x
 
-srcs?=platform.cpp common.cpp
+srcs?=src/platform.cpp src/common.cpp
 objs?=${srcs:.cpp=.o}
 
 client?=${local_bindir}/client
@@ -82,15 +80,15 @@ exes+=${server}
 all+=${exes}
 
 
-${local_bindir}/server: server.o ${server_objs} ${objs}
+${local_bindir}/server: src/server.o ${server_objs} ${objs}
 	@-mkdir -p ${@D}
 	${CXX} -o ${@} $^ ${LDFLAGS} ${LIBS}
 
-${local_bindir}/client: client.o ${client_objs} ${objs}
+${local_bindir}/client: src/client.o ${client_objs} ${objs}
 	@-mkdir -p ${@D}
 	${CXX} -o ${@} $^ ${LDFLAGS} ${LIBS}
 
-${local_bindir}/observer: observer.o ${observer_objs} ${objs}
+${local_bindir}/observer: src/observer.o ${observer_objs} ${objs}
 	@-mkdir -p ${@D}
 	${CXX} -o ${@} $^ ${LDFLAGS} ${LIBS}
 
