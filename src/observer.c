@@ -163,7 +163,12 @@ OCStackApplicationResult onDiscover(void *ctx,
 OCStackResult observer_loop()
 {
     OCStackResult result;
-    LOGf("%.4f (iterate)", gResource.latitude);
+    if (!false) {
+        static int iterations = 0;
+        if ( 16 <= iterations++ ) { gOver = true; } //TODO
+    }
+
+    LOGf("%d (iterate)", iterations);
 
     result = OCProcess();
     if (result != OC_STACK_OK)
@@ -172,7 +177,6 @@ OCStackResult observer_loop()
         return result;
     }
 
-    static int once = 1;
     int c = 0;
     sleep(gDelay);
     LOGf("%d", gOver);
