@@ -163,12 +163,11 @@ OCStackApplicationResult onDiscover(void *ctx,
 OCStackResult observer_loop()
 {
     OCStackResult result;
+    static int iterations = 0;
+    LOGf("%d (iterate)", ++iterations);
     if (false) { //for tests
-        static int iterations = 0;
-        if ( 16 <= iterations++ ) { gOver = true; } //TODO
+        if ( 16 <= iterations ) { gOver = true; } //TODO
     }
-
-    LOGf("%d (iterate)", iterations);
 
     result = OCProcess();
     if (result != OC_STACK_OK)
