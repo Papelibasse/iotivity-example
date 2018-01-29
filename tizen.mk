@@ -16,7 +16,7 @@ gbs_arch?=armv7l
 gbs_profile?=tizen_${app_profile_version_alpha}_${app_profile}_${gbs_arch}
 #
 project_name?=iotivity-example
-app_package_exe?=iotivityexample
+app_package_exe?=iotivityexampleserver
 package_version?=1.0.0
 app_package_name?=org.example.${app_package_exe}
 srcs+=lib
@@ -123,3 +123,13 @@ usr/lib usr/include: usr
 
 usr:
 	ls -l $@ || ${make} rule/import
+
+log: #run
+	sdb shell cat /tmp/out.tmp
+#	sdb shell cat /opt/usr/apps/tmp/out.tmp
+
+
+dlog:
+	sdb dlog
+
+
