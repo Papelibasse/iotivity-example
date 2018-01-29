@@ -47,6 +47,18 @@ Platform::~Platform()
 }
 
 
+#if 0
+void Platform::setValue(double latitude, double longitude)
+{
+//  cerr<<"log: "<< __PRETTY_FUNCTION__ << endl;
+    Common::m_latitude = latitude;
+    Common::m_longitude = longitude; 
+
+    static char text[256];
+    snprintf(text, 256, "%.4f, %.4f", latitude, longitude);
+    handle_text(user_data, 0, text);
+}
+
 void Platform::setValue(bool value)
 {
     LOG();
@@ -56,7 +68,7 @@ void Platform::setValue(bool value)
     log("\n");
     log((value) ? "change: 1\n" : "change: 0\n");
 }
-
+#endif
 
 void Platform::setup(int argc, char *argv[])
 {
