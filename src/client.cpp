@@ -54,7 +54,7 @@ void Resource::onGet(const HeaderOptions &headerOptions,
     if (eCode < OC_STACK_INVALID_URI)
     {
         bool value;
-        representation.getValue(Common::m_propname, value);
+//        representation.getValue(Common::m_propname, value);
         cout << value << endl;
     }
     else
@@ -73,8 +73,8 @@ void Resource::onPost(const HeaderOptions &headerOptions,
     if (eCode < OC_STACK_INVALID_URI)
     {
         bool value;
-        representation.getValue(Common::m_propname, value);
-        Platform::getInstance().setValue(value);
+//        representation.getValue(Common::m_propname, value);
+//        Platform::getInstance().setValue(value);
     }
     else
     {
@@ -101,7 +101,7 @@ void Resource::post(bool value)
     Common::log(message);
     QueryParamsMap params;
     OCRepresentation rep;
-    rep.setValue(Common::m_propname, value);
+//    rep.setValue(Common::m_propname, value);
     m_OCResource->post(rep, params, m_POSTCallback);
 }
 
@@ -235,10 +235,10 @@ void IoTClient::onObserve(const HeaderOptions headerOptions, const OCRepresentat
             }
             cerr << "log: observe: sequenceNumber=" << sequenceNumber << endl;
 
-            bool value;
-            rep.getValue(Common::m_propname, value);
-            Platform::getInstance().setValue(value);
-            IoTClient::getInstance()->m_value = value;
+//            bool value;
+//            rep.getValue(Common::m_propname, value);
+//            Platform::getInstance().setValue(value);
+//            IoTClient::getInstance()->m_value = value;
         }
         else
         {
