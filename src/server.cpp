@@ -34,18 +34,43 @@ using namespace OC;
 
 bool IoTServer::m_over = false;
 
-IoTServer::IoTServer(string property, bool value)
+double IoTServer::m_latmax = 49;
+double IoTServer::m_latmin = 48;
+
+double IoTServer::m_lonmax = -1;
+double IoTServer::m_lonmin = 1;
+
+double IoTServer::m_lat_offset = 0.001;
+double IoTServer::m_lon_offset = 0.001;
+
+
+IoTServer *IoTServer::mInstance = nullptr;
+
+IoTServer *IoTServer::getInstance()
+{
+    if (!IoTServer::mInstance)
+    {
+        mInstance = new IoTServer;
+    }
+    return mInstance;
+}
+
+IoTServer::IoTServer(string endpoint)
 {
     LOG();
+    Common::m_endpoint = endpoint;
+    Common::m_latitude = 48.1033;
+    Common::m_longitude = -1.6725;
     init();
     setup();
-    m_Representation.setValue(property, value);
 }
+
 
 IoTServer::~IoTServer()
 {
     LOG();
 }
+
 
 void IoTServer::init()
 {
@@ -56,7 +81,7 @@ void IoTServer::init()
                         ModeType::Server, // other is Client or Both
                         "0.0.0.0", // default ip
                         0, // default random port
-                        OC::QualityOfService::LowQos// qos
+                        OC::QualityOfService::LowQos // qos
                        );
     OCPlatform::Configure(*m_platformConfig);
 }
@@ -67,7 +92,7 @@ void IoTServer::setup()
     OCStackResult result ;
     EntityHandler handler = bind(&IoTServer::handleEntity, this, placeholders::_1);
 
-    result = createResource(Common::m_endpoint, Common::m_type, handler, m_ResourceHandle);
+    result = createResource(Common::m_endpoint, Common::m_type, handler, m_resourceHandle);
     if (OC_STACK_OK != result)
     {
         cerr << "error: Error on createResource" << endl;
@@ -97,7 +122,6 @@ OCStackResult IoTServer::createResource(string uri, string type, EntityHandler h
         else
             cerr << "log: Successfully created " << type << " resource" << endl;
     }
-
     catch (OC::OCException &e)
     {
         cerr << "error: OCException " <<  e.reason().c_str() << " " << hex << e.code();
@@ -109,14 +133,6 @@ OCStackResult IoTServer::createResource(string uri, string type, EntityHandler h
 }
 
 
-void IoTServer::postResourceRepresentation()
-{
-    LOG();
-    bool value = 0;
-    m_Representation.getValue(Common::m_propname, value);
-    OCStackResult result = OCPlatform::notifyAllObservers(m_ResourceHandle);
-}
-
 OCStackResult IoTServer::respond(std::shared_ptr<OC::OCResourceResponse> response)
 {
     OCStackResult result =  OC_STACK_ERROR;
@@ -125,49 +141,12 @@ OCStackResult IoTServer::respond(std::shared_ptr<OC::OCResourceResponse> respons
     if (response)
     {
         response->setResponseResult(OC_EH_OK);
-        response->setResourceRepresentation(m_Representation);
+        response->setResourceRepresentation(m_representation);
         result = OCPlatform::sendResponse(response);
     }
     return result;
 }
 
-OCStackResult IoTServer::handlePost(shared_ptr<OCResourceRequest> request)
-{
-    LOG();
-    OCStackResult result = OC_STACK_OK;
-
-    OCRepresentation requestRep = request->getResourceRepresentation();
-    if (requestRep.hasAttribute(Common::m_propname))
-    {
-        try
-        {
-            bool value = requestRep.getValue<bool>(Common::m_propname);
-            Platform::getInstance().setValue(value);
-        }
-        catch (...)
-        {
-            cerr << "error: Client sent invalid resource value type" << endl;
-            return result;
-        }
-    }
-    else
-    {
-        cerr << "error: Client sent invalid resource property" << endl;
-        return result;
-    }
-    m_Representation = requestRep;
-    postResourceRepresentation();
-
-    return result;
-}
-
-OCStackResult IoTServer::handleGet(shared_ptr<OCResourceRequest> request)
-{
-    LOG();
-    OCStackResult result = OC_STACK_OK;
-
-    return result;
-}
 
 OCEntityHandlerResult IoTServer::handleEntity(shared_ptr<OCResourceRequest> request)
 {
@@ -183,38 +162,18 @@ OCEntityHandlerResult IoTServer::handleEntity(shared_ptr<OCResourceRequest> requ
             auto response = std::make_shared<OC::OCResourceResponse>();
             response->setRequestHandle(request->getRequestHandle());
             response->setResourceHandle(request->getResourceHandle());
-
-            if (requestType == "POST")
+            if (requestType == "GET")
             {
-                if (handlePost(request) == OC_STACK_OK)
+                cerr << "GET request for platform Resource" << endl;
+                if (response)
                 {
-                    if (respond(response) == OC_STACK_OK)
+                    response->setResponseResult(OC_EH_OK);
+                    response->setResourceRepresentation(m_representation);
+                    if (OCPlatform::sendResponse(response) == OC_STACK_OK)
                     {
                         result = OC_EH_OK;
                     }
                 }
-                else
-                {
-                    response->setResponseResult(OC_EH_ERROR);
-                    OCPlatform::sendResponse(response);
-                }
-                ;;
-            }
-            else if (requestType == "GET")
-            {
-                if (handleGet(request) == OC_STACK_OK)
-                {
-                    if (respond(response) == OC_STACK_OK)
-                    {
-                        result = OC_EH_OK;
-                    }
-                }
-                else
-                {
-                    response->setResponseResult(OC_EH_ERROR);
-                    OCPlatform::sendResponse(response);
-                }
-
             }
             else
             {
@@ -227,11 +186,82 @@ OCEntityHandlerResult IoTServer::handleEntity(shared_ptr<OCResourceRequest> requ
     return result;
 }
 
+void IoTServer::setValue(double latitude, double longitude)
+{
+//  cerr<<"log: "<< __PRETTY_FUNCTION__ << endl;
+    Common::m_latitude = latitude;
+    Common::m_longitude = longitude; 
+}
+
+
+void IoTServer::update()
+{
+    LOG();
+    if ( false )
+    {
+        Common::m_latitude += m_lat_offset;
+        Common::m_longitude += m_lon_offset;
+
+        if (Common::m_latitude > m_latmax)
+        {
+            if (m_lat_offset > 0) { m_lat_offset = - m_lat_offset; }
+        }
+        else if (Common::m_latitude < m_latmin)
+        {
+            if ( m_lat_offset < 0 ) m_lat_offset = - m_lat_offset;
+        }
+
+        if (Common::m_longitude > m_lonmax)
+        {
+            if (m_lon_offset > 0) { m_lon_offset = - m_lon_offset; }
+        }
+        else if (Common::m_longitude < m_lonmin)
+        {
+            if ( m_lon_offset < 0 ) m_lon_offset = - m_lon_offset;
+        }
+    }
+    {
+        m_representation.setValue("latitude", Common::m_latitude);
+        m_representation.setValue("longitude", Common::m_longitude);
+
+        cout << "{"
+             << Common::m_type <<": {"
+             << "latitude:" << std::fixed << Common::m_latitude << "," 
+             << "longitude:" << std::fixed << Common::m_longitude 
+             << "}" << endl;
+    }
+    OCStackResult result = OCPlatform::notifyAllObservers(m_resourceHandle);
+    if (OC_STACK_OK != result)
+    {
+        cerr << "warning: "<<  __PRETTY_FUNCTION__ << endl;
+    }
+}
+
 
 void IoTServer::handle_signal(int signal)
 {
     LOG();
     IoTServer::m_over = true;
+}
+
+
+void IoTServer::start()
+{
+    LOG();
+    try
+    {
+        do
+        {
+            update();
+            sleep(Common::m_period);
+        }
+        while (!IoTServer::m_over );
+    } 
+    catch (...)
+    {
+        exit(1);
+    }
+
 }
 
 
@@ -245,26 +275,49 @@ int IoTServer::main(int argc, char *argv[])
     sigaction(SIGINT, &sa, nullptr);
 
     cerr << "log: Server: " << endl
-         << "Press Ctrl-C to quit...." << endl;
+         << "Press Ctrl-C to quit...." << endl
+         << "Usage: server -v" << endl
+         ;
 
+    int subargc = argc;
+    char **subargv = argv;
     for (int i = 1; i < argc; i++)
     {
         if (0 == strcmp("-v", argv[i]))
         {
             Common::m_logLevel++;
+            argc--;
+            subargv++;
         }
     }
 
-    Platform::getInstance().setup(argc, argv);
+    Platform::getInstance().setup(subargc, subargv);
 
-    IoTServer server;
+    IoTServer* server = IoTServer::getInstance();
     try
     {
-        do
+        if ((argc > 1) && argv[1])
         {
-            usleep(2000000);
+            Common::m_period  = atoi(argv[1]);
         }
-        while (!IoTServer::m_over );
+        if ((argc > 2) && argv[2])
+        {
+            server->m_lat_offset = server->m_lon_offset = atof(argv[2]);
+        }
+        if ((argc > 3) && argv[3])
+        {
+            Common::m_latitude = atof(argv[3]);
+        }
+        if ((argc > 4) && argv[4])
+        {
+            Common::m_longitude = atof(argv[4]);
+        }
+        server->m_latmax = Common::m_latitude + 1;
+        server->m_latmin = Common::m_latitude - 1;
+        server->m_lonmax = Common::m_longitude + 1;
+        server->m_lonmin = Common::m_longitude - 1;
+
+        server->start();
     }
     catch (...)
     {
@@ -272,6 +325,7 @@ int IoTServer::main(int argc, char *argv[])
     }
     return 0;
 }
+
 
 #ifdef CONFIG_SERVER_MAIN
 int main(int argc, char *argv[])
