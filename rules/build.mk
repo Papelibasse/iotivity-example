@@ -21,7 +21,7 @@
 # //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 rule/task/%: rules/iotivity-config.mk
-	${MAKE} ${@F}
+	${make} ${@F}
 
 exe_args?=-v
 
@@ -31,7 +31,7 @@ local_optdir?=opt
 install_dir?=${DESTDIR}/${local_optdir}/${package}/
 
 -include rules/iotivity-config.mk
-demo_time?=20
+demo_time?=36000
 TMPDIR?=${CURDIR}/tmp
 log_dir?=${TMPDIR}/log
 override platform?=default
@@ -45,7 +45,7 @@ export V
 rule/default: ${platform}/default
 
 all: rules/iotivity-config.mk
-	${MAKE} ${platform}/$@
+	${make} ${platform}/$@
 
 .PHONY: rule/%/% rule/print/% 
 
@@ -68,20 +68,20 @@ demo: demo/${platform}
 	@echo "# $@: $^"
 
 demo/%:
-	${MAKE} ${@F}/${@D}
+	${make} ${@F}/${@D}
 
 demo/${platform}: demo/kill
-	${MAKE} platform=${@F} platform/demo &
+	${make} platform=${@F} platform/demo &
 	@echo "# please check it change state on server"
 	sleep ${demo_time}
 	@echo "# please check it change state on server"
 	sleep ${demo_time}
-	${MAKE}	demo/kill
+	${make}	demo/kill
 
 
 demo/all: distclean
-	${MAKE} platform=${platform} distclean
-	${MAKE} platform=${platform} demo
+	${make} platform=${platform} distclean
+	${make} platform=${platform} demo
 
 
 platform/demo: xterm/server xterm/client
@@ -98,7 +98,7 @@ install: ${all}
 	install -d ${install_dir}/bin
 	install $^ ${install_dir}/bin
 
-demo/kill: bin/server bin/client
+demo/kill: bin/server bin/client bin/observer
 	-killall ${^F}
 
 demo/check: demo/log
@@ -126,13 +126,13 @@ todo/run/%: bin/%
  | tee ${log_dir}/${@F}
 
 xterm/% : bin/%
-	xterm -T "$@" -e ${MAKE} run/${@F}  &
+	xterm -T "$@" -e ${make} run/${@F}  &
 	sleep 5
 
 run: run/client
 	@echo "# $@: $^"
 
-platform/demo: xterm/server xterm/client
+platform/demo: xterm/server xterm/observer
 	@echo "# $@: $^"
 
 check: ${all}
@@ -150,7 +150,7 @@ cleanall: clean
 
 distclean: ${platform}/cleanall cleanall
 	-rm -rf build* tmp temp
-	-${MAKE} ${platform}/$@
+	-${make} ${platform}/$@
 
 
 deps: ${deps}
