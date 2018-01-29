@@ -21,13 +21,11 @@
 
 #include <assert.h>
 #include <Evas.h>
+#include <locations.h>
 
 #include "main.h"
 #include "common.h"
-#include "observer.h"
-#include "client.h"
-
-static void setValue(int value);
+#include "server.h"
 
 typedef struct appdata
 {
@@ -35,22 +33,21 @@ typedef struct appdata
     Evas_Object *conform;
     Evas_Object *box;
     Evas_Object *output;
-    Evas_Object *on_button;
     Evas_Object *toggle_button;
-    Evas_Object *off_button;
     Ecore_Thread *thread;
-    Ecore_Thread *client_thread;
+    Ecore_Thread *server_thread;
     Eina_Lock mutex;
     int length;
     int len;
     int page;
     int position_bottom;
+    location_manager_h location;
 
 } appdata_s;
 
 static char const *const g_usage_text = ""
                                         "<b>"
-                                        "IoTivity Binary Switch example"
+                                        "IoTivity Geolocation server example"
                                         "</b>"
                                         "<br/><br/>"
                                         "<i>URL:</i> https://quitter.is/tizenhelper"
@@ -102,9 +99,6 @@ static void end_func(void *data, Ecore_Thread *thread)
 {
     appdata_s *ad =  (appdata_s *) data;
     ad->thread = 0;
-    elm_entry_input_panel_enabled_set(ad->toggle_button, EINA_TRUE);
-    elm_entry_input_panel_enabled_set(ad->on_button, EINA_TRUE);
-    elm_entry_input_panel_enabled_set(ad->off_button, EINA_TRUE);
 }
 
 static void cancel_func(void *user_data, Ecore_Thread *thread)
@@ -166,19 +160,60 @@ static void notify_func(void *data, Ecore_Thread *thread/* __UNUSED__*/,
     handle_text(data, 0, msgdata);
 }
 
+
+// https://developer.tizen.org/dev-guide/2.4/org.tizen.tutorials/html/native/location/location_tutorial_n.htm
+static void location_cb(location_service_state_e state, void *user_data)
+{
+    handle_text(user_data, 0, __PRETTY_FUNCTION__);
+    appdata_s *ad = (appdata_s*)user_data;
+    double altitude, latitude, longitude, climb, direction, speed, horizontal, vertical;
+    location_accuracy_level_e level;
+        time_t timestamp;
+
+    if (state == LOCATIONS_SERVICE_ENABLED) 
+    {
+        double altitude, latitude, longitude, climb, direction, speed;
+        double horizontal, vertical;
+        location_accuracy_level_e level;
+        time_t timestamp;
+        location_manager_get_location(ad->location, &altitude, &latitude, &longitude, &climb, &direction, &speed, &level, &horizontal, &vertical, &timestamp);
+        IoTServer::getInstance()->setValue(latitude, longitude);
+    }
+}
+
+
+static void location_update_cb(double latitude, double longitude,
+                                   double altitude, time_t timestamp, void *user_data)
+{
+    handle_text(user_data, 0, __PRETTY_FUNCTION__);
+    appdata_s *ad = (appdata_s*)user_data;
+    IoTServer::getInstance()->setValue(latitude, longitude);
+    static char text[256];
+    snprintf(text, 256, "%.4f, %.4f", latitude, longitude);
+    handle_text(user_data, 0, text);
+}
+
+
 static void heavy_func(void *data /*__UNUSED__*/, Ecore_Thread *thread)
 {
+    handle_text(data, 0, __PRETTY_FUNCTION__);
     appdata_s *ad = g_appdata = (appdata_s *) data;
     ad->thread = thread;
     ad->len = 0;
     ad->length = 0;
-    ad->page = 0;
+    ad->page = 0;   
 
-    IoTObserver::getInstance()->start();
+    location_manager_create(LOCATIONS_METHOD_GPS, &ad->location);
+    location_manager_set_service_state_changed_cb(ad->location, location_cb, (void*)ad);
+    location_manager_set_position_updated_cb(ad->location, location_update_cb, 2, (void*) ad);
+    location_manager_start(ad->location);
+
+    IoTServer::getInstance()->start();
 }
 
+#if 1
 
-static void eval_cb(void *user_data, Evas_Object *obj, void *event_info)
+static void toggle_cb(void *user_data, Evas_Object *obj, void *event_info)
 {
 
     appdata_s *ad = (appdata_s *) user_data;
@@ -210,46 +245,19 @@ static void eval_cb(void *user_data, Evas_Object *obj, void *event_info)
     }
 }
 
-static void toggle_client_heavy_func(void *data /*__UNUSED__*/, Ecore_Thread *thread)
+#else
+
+static void toggle_server_heavy_func(void *data /*__UNUSED__*/, Ecore_Thread *thread)
 {
     appdata_s *ad = g_appdata = (appdata_s *) data;
     ad->thread = thread;
     ad->len = 0;
     ad->length = 0;
     ad->page = 0;
-    char buff[1024];
-    char copy[1024];
 
-    setValue(2);
+    IoTServer::getInstance()->start();
 }
 
-static void on_client_heavy_func(void *data /*__UNUSED__*/, Ecore_Thread *thread)
-{
-    appdata_s *ad = g_appdata = (appdata_s *) data;
-    ad->thread = thread;
-    ad->len = 0;
-    ad->length = 0;
-    ad->page = 0;
-    char buff[1024];
-    char copy[1024];
-
-    setValue(1);
-}
-
-
-static void off_client_heavy_func(void *data /*__UNUSED__*/, Ecore_Thread *thread)
-{
-    appdata_s *ad = g_appdata = (appdata_s *) data;
-    ad->thread = thread;
-    ad->len = 0;
-    ad->length = 0;
-    ad->page = 0;
-    char buff[1024];
-    char copy[1024];
-    static IoTClient *client = 0;
-
-    setValue(0);
-}
 
 
 static void toggle_cb(void *user_data, Evas_Object *obj, void *event_info)
@@ -257,42 +265,12 @@ static void toggle_cb(void *user_data, Evas_Object *obj, void *event_info)
     appdata_s *ad = (appdata_s *) user_data;
 
     elm_entry_input_panel_enabled_set(ad->toggle_button, EINA_FALSE);
-    elm_entry_input_panel_enabled_set(ad->on_button, EINA_FALSE);
-    elm_entry_input_panel_enabled_set(ad->off_button, EINA_FALSE);
 
-    ad->client_thread = ecore_thread_feedback_run(toggle_client_heavy_func, notify_func,
+    ad->server_thread = ecore_thread_feedback_run(toggle_server_heavy_func, notify_func,
                         end_func, cancel_func, ad, EINA_FALSE);
 }
 
-
-static void on_cb(void *user_data, Evas_Object *obj, void *event_info)
-{
-
-    appdata_s *ad = (appdata_s *) user_data;
-
-    elm_entry_input_panel_enabled_set(ad->toggle_button, EINA_FALSE);
-    elm_entry_input_panel_enabled_set(ad->on_button, EINA_FALSE);
-    elm_entry_input_panel_enabled_set(ad->off_button, EINA_FALSE);
-
-    ad->client_thread = ecore_thread_feedback_run(on_client_heavy_func, notify_func,
-                        end_func, cancel_func, ad, EINA_FALSE);
-
-}
-
-
-static void off_cb(void *user_data, Evas_Object *obj, void *event_info)
-{
-    appdata_s *ad = (appdata_s *) user_data;
-
-    elm_entry_input_panel_enabled_set(ad->toggle_button, EINA_FALSE);
-    elm_entry_input_panel_enabled_set(ad->on_button, EINA_FALSE);
-    elm_entry_input_panel_enabled_set(ad->off_button, EINA_FALSE);
-
-    ad->client_thread = ecore_thread_feedback_run(off_client_heavy_func, notify_func,
-                        end_func, cancel_func, ad, EINA_FALSE);
-
-}
-
+#endif
 
 static void
 create_base_gui(appdata_s *ad)
@@ -353,20 +331,6 @@ create_base_gui(appdata_s *ad)
         elm_box_pack_end(box, entry);
         evas_object_show(entry);
     }
-
-    {
-        char const *const text = "ON !";
-        Evas_Object *button = ad->on_button = elm_button_add(box);
-
-        evas_object_size_hint_weight_set(button, EVAS_HINT_EXPAND, 0);
-        evas_object_size_hint_align_set(button, EVAS_HINT_FILL, EVAS_HINT_FILL);
-
-        elm_object_text_set(button, text);
-        evas_object_smart_callback_add(button, "clicked", on_cb, ad);
-
-        elm_box_pack_end(box, button);
-        evas_object_show(button);
-    }
     {
         char const *const text = "TOGGLE";
         Evas_Object *button = ad->toggle_button = elm_button_add(box);
@@ -376,19 +340,6 @@ create_base_gui(appdata_s *ad)
 
         elm_object_text_set(button, text);
         evas_object_smart_callback_add(button, "clicked", toggle_cb, ad);
-
-        elm_box_pack_end(box, button);
-        evas_object_show(button);
-    }
-
-    {
-        char const *const text = "OFF !";
-        Evas_Object *button = ad->off_button = elm_button_add(box);
-        evas_object_size_hint_weight_set(button, EVAS_HINT_EXPAND, 0);
-        evas_object_size_hint_align_set(button, EVAS_HINT_FILL, EVAS_HINT_FILL);
-        elm_object_text_set(button, text);
-
-        evas_object_smart_callback_add(button, "clicked", off_cb, ad);
 
         elm_box_pack_end(box, button);
         evas_object_show(button);
@@ -420,38 +371,6 @@ void printlog(char const *const message)
     }
 }
 
-
-static void setValue(int value)
-{
-    static IoTClient *client = NULL;
-    if (client == 0)
-    {
-        client = IoTClient::getInstance();
-        client->start();
-    }
-    else
-    {
-        if (value <= 1)
-            IoTClient::getInstance()->setValue(value);
-        else
-            IoTClient::getInstance()->toggle();
-    }
-}
-
-
-void handleValue(bool value)
-{
-    printlog( (value) ? "1" : "0" );
-    if (g_appdata)
-    {
-        ecore_thread_main_loop_begin();
-        elm_object_text_set(g_appdata->toggle_button, (value) ? "TOGGLE : ! 1" : "TOGGLE : ! 0");
-        elm_object_text_set(g_appdata->on_button, (value) ? "ON : 1 =" : "ON : 1 !");
-        elm_object_text_set(g_appdata->off_button, (value) ? "OFF : 0 !" : "OFF : 0 =");
-        ecore_thread_main_loop_end();
-    }
-
-}
 
 
 static bool
@@ -540,15 +459,15 @@ main(int argc, char *argv[])
     appdata_s ad = { 0, };
     int ret = 0;
     elm_init(argc, argv);
-    if (false)
+    if (!false)
     {
         {
             int n = ecore_thread_max_get();
             printf("Initial max threads: %d\n", n);
         }
 
-        // char filename[100] = "/opt/usr/apps/tmp/out.tmp";
-        char filename[100] = "/tmp/out.tmp";
+        //char filename[] = "/opt/usr/apps/tmp/out.tmp";
+        char filename[] = "/tmp/out.tmp";
         freopen(filename, "w", stdout);
 
         char mode[] = "0777";
@@ -556,7 +475,6 @@ main(int argc, char *argv[])
         i = strtol(mode, 0, 8);
         i = chmod (filename, i);
     }
-
 
     ui_app_lifecycle_callback_s event_callback = { 0, };
     app_event_handler_h handlers[5] = { NULL, };
@@ -586,4 +504,3 @@ main(int argc, char *argv[])
 
     return ret;
 }
-
