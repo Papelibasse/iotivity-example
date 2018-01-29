@@ -26,4 +26,4 @@ build*/*
 log*
 *.c.cpp
 local.mk
-
+.built
