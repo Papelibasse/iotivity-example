@@ -55,10 +55,15 @@ LIBS+=${iotivity_libs}
 CFLAGS+=-fPIC
 CPPFLAGS+=-Isrc
 
-client?=${local_bindir}/client
 server_objs?=src/server/platform/default/platform.o
 server?=${local_bindir}/server
+
+client?=${local_bindir}/client
 client_objs?=
+
+observer?=${local_bindir}/observer
+observer_objs?=
+
 
 all+=${server}
 all+=${client}
@@ -84,6 +89,10 @@ ${local_bindir}/server: src/server.o ${server_objs} ${objs} ${libs}
 	${CC} -o ${@} $^ ${LDFLAGS} ${LIBS}
 
 ${local_bindir}/client: src/client.o ${client_objs} ${objs} ${libs}
+	@-mkdir -p ${@D}
+	${CC} -o ${@} $^ ${LDFLAGS} ${LIBS}
+
+${local_bindir}/observer: src/observer.o ${client_objs} ${objs} ${libs}
 	@-mkdir -p ${@D}
 	${CC} -o ${@} $^ ${LDFLAGS} ${LIBS}
 
