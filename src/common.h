@@ -25,6 +25,7 @@
 #define COMMON_H_
 
 #include <string>
+#include <iotivity/resource/OCApi.h>
 
 #if !defined(PACKAGE)
 #define PACKAGE "Example"
@@ -40,27 +41,29 @@ class Common
         static std::string  m_type;
         /** url's path (used both sides) **/
         static std::string  m_endpoint;
-        /** key (used both sides) **/
-        static std::string  m_propname;
+        /** resource policy **/
+        static const uint8_t m_policy = OC_DISCOVERABLE | OC_OBSERVABLE;
         /** polling period**/
         static int m_period;
         /** log enabled if positive **/
         static int m_logLevel;
+    public:
+        /** Resource properties **/
+        static double m_latitude;
+        static double m_longitude;
+    public:
         static void log(char const *const message);
 };
-
-#define STR_(x) #x
-#define STR(x) STR_(x)
 
 #include <iostream>
 
 class Logger
 {
-        const char *mMessage;
     public:
-
         Logger(const char *message);
         ~Logger();
+    protected:
+        const char *mMessage;
 };
 
 #define LOG()                                   \
@@ -68,4 +71,6 @@ class Logger
 
 
 //TODO: << " @"<< __FILE__<<":"<<__LINE__<<":"<<
+#define STR_(x) #x
+#define STR(x) STR_(x)
 #endif /* COMMON_H_ */
