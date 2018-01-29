@@ -26,9 +26,11 @@
 #include "platform.h"
 
 std::string Common::m_interface = OC_RSRVD_INTERFACE_DEFAULT; //"oic.if.baseline"
-std::string Common::m_type = "oic.r.switch.binary";
-std::string Common::m_endpoint = "/BinarySwitchResURI";
-std::string Common::m_propname = "value";
+
+std::string Common::m_type = "oic.r.geolocation";
+std::string Common::m_endpoint = "/GeolocationResURI";
+double Common::m_latitude = 0;
+double Common::m_longitude = 0;
 
 int Common::m_logLevel = 1;
 int Common::m_period = 5;
