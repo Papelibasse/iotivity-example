@@ -163,7 +163,7 @@ OCStackApplicationResult onDiscover(void *ctx,
 OCStackResult observer_loop()
 {
     OCStackResult result;
-    if (!false) {
+    if (false) { //for tests
         static int iterations = 0;
         if ( 16 <= iterations++ ) { gOver = true; } //TODO
     }
