@@ -34,31 +34,37 @@
 class IoTServer
 {
     public:
-        IoTServer(std::string propname = Common::m_propname, bool value = false);
+        IoTServer(std::string endpoint = Common::m_endpoint);
         virtual ~IoTServer();
-
     public:
         static int main(int argc, char *argv[]);
-
+        static IoTServer *getInstance();
+        void update();
+        void start();
+        void setValue(double latitude, double longitude);
     protected:
-        std::shared_ptr<OC::PlatformConfig> m_platformConfig;
-        OC::OCRepresentation m_Representation;
-        OCResourceHandle m_ResourceHandle;
-
+        static void handle_signal(int signal);
         void init();
         void setup();
         OCStackResult createResource(std::string, std::string, OC::EntityHandler, OCResourceHandle &);
-
-        OC::OCRepresentation getResourceRepresentation();
-        void postResourceRepresentation();
         OCEntityHandlerResult handleEntity(std::shared_ptr<OC::OCResourceRequest>);
         OCStackResult handlePost(std::shared_ptr<OC::OCResourceRequest> request);
         OCStackResult handleGet(std::shared_ptr<OC::OCResourceRequest> request);
         OCStackResult respond(std::shared_ptr<OC::OCResourceResponse> response);
-
-        static void handle_signal(int signal);
-
+    protected:
+        std::shared_ptr<OC::PlatformConfig> m_platformConfig;
+        OC::OCRepresentation m_representation;
+        OCResourceHandle m_resourceHandle;
         static bool m_over;
+    protected:
+        static IoTServer *mInstance;
+        static double m_latmax;
+        static double m_latmin;
+        static double m_lonmax;
+        static double m_lonmin;
+        static double m_lat_offset;
+        static double m_lon_offset;
+
 };
 
 #endif /* SERVER_H_ */
