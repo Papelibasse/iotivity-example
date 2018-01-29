@@ -1,6 +1,6 @@
 
 # Project Name
-APPNAME = iotivityexample
+APPNAME = iotivityexampleserver
 
 # Project Type
 type = app
@@ -9,7 +9,7 @@ type = app
 profile = mobile-2.4
 
 # C/CPP Sources
-USER_SRCS = src/observer.cpp src/client.cpp src/common.cpp src/main.cpp src/platform.cpp 
+USER_SRCS = src/server.cpp src/common.cpp src/main.cpp src/platform.cpp 
 
 # EDC Sources
 USER_EDCS =  
