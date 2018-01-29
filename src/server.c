@@ -39,16 +39,17 @@ void platform_setup();
 void platform_loop();
 void platform_setValue(bool value);
 
-OCStackResult createSwitchResource();
+OCStackResult createResource();
 
 
-OCStackResult setValue(bool value)
+OCStackResult setValue(double latitude, double longitude)
 {
     OCStackResult result;
-    LOGf("%d", value);
-    gSwitch.value = value;
-    platform_setValue(gSwitch.value);
-    result = OCNotifyAllObservers(gSwitch.handle, gQos);
+    LOGf("%.4f", latitude);
+    gResource.latitude = latitude;
+    gResource.longitude = longitude;
+
+    result = OCNotifyAllObservers(gResource.handle, gQos);
     return result;
 }
 
@@ -65,8 +66,9 @@ OCRepPayload *createPayload()
     //OCRepPayloadAddResourceType(payload, gIface);
     //OCRepPayloadAddInterface(payload, DEFAULT_INTERFACE);
 
-    LOGf("%d (payload)", gSwitch.value);
-    OCRepPayloadSetPropBool(payload, "value", gSwitch.value);
+    LOGf("%.4f (payload)", gResource.latitude);
+    OCRepPayloadSetPropDouble(payload, "latitude", gResource.latitude);
+    OCRepPayloadSetPropDouble(payload, "longitude", gResource.longitude);
 
     return payload;
 }
@@ -83,7 +85,7 @@ OCEntityHandlerResult onOCEntity(OCEntityHandlerFlag flag,
     memset(&response,0,sizeof response);
 
     LOGf("%p", entityHandlerRequest);
-    LOGf("%d (current)", gSwitch.value);
+    LOGf("%.4f (current)", gResource.latitude);
 
     if (entityHandlerRequest && (flag & OC_REQUEST_FLAG))
     {
@@ -94,13 +96,16 @@ OCEntityHandlerResult onOCEntity(OCEntityHandlerFlag flag,
         case OC_REST_POST:
         case OC_REST_PUT:
             input = (OCRepPayload*) entityHandlerRequest->payload;
-            OCRepPayloadGetPropBool(input, "value", &gSwitch.value);
-            LOGf("%d (update)", gSwitch.value);
-            res = setValue(gSwitch.value);
+            OCRepPayloadGetPropDouble(input, "latitude", &gResource.latitude);
+            OCRepPayloadGetPropDouble(input, "longitude", &gResource.longitude);
+            LOGf("%.4f (update)", gResource.latitude);
+            LOGf("%.4f (update)", gResource.longitude);
+            res = setValue(gResource.latitude, gResource.longitude);
             break;
         case OC_REST_GET:
             OCRepPayloadSetUri(payload, gUri);
-            OCRepPayloadSetPropBool(payload, "value", gSwitch.value);
+            OCRepPayloadSetPropDouble(payload, "latitude", gResource.latitude);
+            OCRepPayloadSetPropDouble(payload, "longitude", gResource.longitude);
             break;
         default:
             break;
@@ -136,9 +141,9 @@ OCEntityHandlerResult onOCEntity(OCEntityHandlerFlag flag,
 }
 
 
-OCStackResult createSwitchResource()
+OCStackResult createResource()
 {
-    OCStackResult result = OCCreateResource(&(gSwitch.handle),
+    OCStackResult result = OCCreateResource(&(gResource.handle),
                                             gName,
                                             gIface,
                                             gUri,
@@ -153,7 +158,28 @@ OCStackResult createSwitchResource()
 
 OCStackResult server_loop()
 {
-    LOGf("%d (iterate)", gSwitch.value);
+    LOGf("%.4f (iterate)", gResource.latitude);
+
+    static double m_lat = 48.1033;
+    static double m_lon = -1.6725;
+    static double m_offset = 0.001;
+
+    static double m_latmax = 49;
+    static double m_latmin = 48;
+
+    m_lat += m_offset;
+    m_lon += m_offset;
+    
+    if (m_lat > m_latmax)
+    {
+        if (m_offset > 0) { m_offset = - m_offset; }
+    }
+    else if (m_lat < m_latmin)
+    {
+        if ( m_offset < 0 ) { m_offset = - m_offset; }
+    }
+    
+    setValue( m_lat, m_lon);
     OCStackResult result = OCProcess();
     if (result != OC_STACK_OK)
     {
@@ -176,7 +202,7 @@ OCStackResult server_setup()
         return result;
     }
 
-    result = createSwitchResource();
+    result = createResource();
     if (result != OC_STACK_OK)
     {
         LOGf("%d (error)", result);
