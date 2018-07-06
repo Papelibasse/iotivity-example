@@ -1,0 +1,32 @@
+[submodule "src/example/master"]
+	path = src/example/master
+	url = http://git.s-osg.org/iotivity-example
+	branch = example/master
+[submodule "src/example/packaging/master"]
+	path = src/example/packaging/master
+	url = http://git.s-osg.org/iotivity-example
+	branch = example/packaging/master
+[submodule "src/geolocation/master"]
+	path = src/geolocation/master
+	url = http://git.s-osg.org/iotivity-example
+	branch = geolocation/master
+[submodule "src/switch/master"]
+	path = src/switch/master
+	url = http://git.s-osg.org/iotivity-example
+	branch = switch/master
+[submodule "src/clock/1.2-rel"]
+	path = src/clock/1.2-rel
+	url = http://git.s-osg.org/iotivity-example
+	branch = clock/1.2-rel
+[submodule "src/clock/master"]
+	path = src/clock/master
+	url = http://git.s-osg.org/iotivity-example
+	branch = clock/master
+[submodule "src/brightness/1.2-rel"]
+	path = src/brightness/1.2-rel
+	url = http://git.s-osg.org/iotivity-example
+	branch = brightness/1.2-rel
+[submodule "src/brightness/master"]
+	path = src/brightness/master
+	url = http://git.s-osg.org/iotivity-example
+	branch = brightness/master
